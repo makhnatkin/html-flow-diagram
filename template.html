@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тема схемы</title>
+<style>
+  html { --sans: system-ui, sans-serif; --mono: ui-monospace, Menlo, monospace; }
+  :root { --bg: #fafbfc; --fg: #1f2430; --muted: #6b7280; --code-bg: #eef1f5; --info: #3974a8; --ok: #16a34a; --warn: #d99a06; --bad: #dc2626; --wire: color-mix(in srgb, var(--fg) 70%, transparent); --sw-light: color-mix(in srgb, var(--fg) 12%, transparent); --sw-dark: transparent; }
+  :root[data-theme="dark"] { --bg: #15181d; --fg: #e4e7ec; --muted: #9ba3af; --code-bg: #252a33; --info: #79aee0; --ok: #3fb950; --warn: #e3b341; --bad: #f26d6d; --sw-light: transparent; --sw-dark: color-mix(in srgb, var(--fg) 18%, transparent); }
+
+  body { margin: 0; padding: clamp(24px, 4vw, 56px); font: 14px/1.55 var(--sans); color: var(--fg); background: var(--bg); }
+  .wrap { max-width: 1040px; margin-inline: auto; }
+  h2 { font-size: 20px; font-weight: 650; line-height: 1.35; margin: 56px 0 24px; padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, var(--fg) 12%, transparent); }
+  h2:first-of-type { margin-top: 32px; }
+  h3 { font-size: 17px; line-height: 1.4; margin: 32px 0 20px; }
+  code { font: 12px var(--mono); }
+
+  .theme-switch { display: inline-flex; margin-bottom: 16px; border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 8px; overflow: hidden; font-size: 12px; }
+  .theme-switch > * { padding: 5px 12px; border: 0; background: none; color: var(--fg); font: inherit; cursor: pointer; }
+  .theme-switch > :first-child { background: var(--sw-light); }
+  .theme-switch > :last-child { background: var(--sw-dark); }
+
+  .dg { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 46px; row-gap: 32px; }
+  .dg.c12 { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 12px; row-gap: 10px; }
+  .dg.center > .bx { align-self: center; }
+  svg.wires { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire); stroke-width: 1.5; }
+  .ahd { fill: var(--wire); }
+  .el { font: 11px var(--sans); fill: var(--muted); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+
+  .bx { border: 1px solid; border-radius: 10px; padding: 12px 14px; box-sizing: border-box; min-width: 0; overflow-wrap: anywhere; box-shadow: 0 2px 6px color-mix(in srgb, var(--fg) 4%, transparent); }
+  .bx p { margin: 8px 0 0; }
+  .bx pre { margin: 12px 0; padding: 12px; border-radius: 6px; background: var(--code-bg); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+  .bx pre:last-child { margin-bottom: 0; }
+  .bx a, .diagram-sources a { color: var(--info); text-underline-offset: 3px; }
+  .tag { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+  .step { border-color: color-mix(in srgb, var(--fg) 30%, transparent); background: color-mix(in srgb, var(--fg) 4%, transparent); }
+  .step .tag { color: var(--muted); }
+  .atk { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+  .atk .tag { color: var(--bad); }
+  .chk { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .chk .tag { color: var(--ok); }
+  .plan { border-color: var(--ok); border-style: dashed; }
+  .plan .tag { color: var(--ok); }
+  .gap { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+  .gap .tag { color: var(--warn); }
+  .out { border-color: color-mix(in srgb, var(--fg) 60%, transparent); font-weight: 600; }
+  .out .tag { color: var(--muted); }
+  .note { border-color: var(--info); background: color-mix(in srgb, var(--info) 5%, transparent); }
+  .note .tag { color: var(--info); }
+  .lane { text-align: center; font-weight: 700; font-size: 12px; padding: 6px 0; border-bottom: 1.5px solid color-mix(in srgb, var(--fg) 30%, transparent); }
+  .row-label { grid-column: 1 / -1; font-weight: 700; font-size: 12px; margin-top: 8px; }
+  .diagram-sources { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; }
+  .legend .bx { padding: 6px 11px; font-size: 12px; box-shadow: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="theme-switch" role="group" aria-label="Тема"><button type="button" data-set-theme="light">Светлая</button><button type="button" data-set-theme="dark">Тёмная</button></div>
+
+<div class="legend">
+  <div class="bx step">Шаг</div>
+  <div class="bx atk">Атака или ошибка</div>
+  <div class="bx chk">Проверка работает</div>
+  <div class="bx plan">В плане, не сделано</div>
+  <div class="bx gap">Слабое место</div>
+  <div class="bx out">Итог</div>
+  <div class="bx note">Пояснение</div>
+</div>
+
+<h2>1. Как запрос проходит от клиента до хранилища</h2>
+<div class="dg center" data-edges="c1>s1|запрос;s1>e1|нет;s1>s2|доступ есть;s2>d1|чтение;d1>o1|данные">
+<div class="lane" style="grid-column:1;grid-row:1">Клиент</div>
+<div class="lane" style="grid-column:2;grid-row:1">Сервер</div>
+<div class="lane" style="grid-column:3;grid-row:1">Хранилище</div>
+<div class="bx step" id="c1" style="grid-column:1;grid-row:2"><div class="tag">Начало · запрос</div>Клиент запрашивает запись по номеру:<pre><code>GET /items/42 HTTP/1.1
+Host: api.example
+Authorization: Bearer …</code></pre><p>Адрес условный.</p></div>
+<div class="bx chk" id="s1" style="grid-column:2;grid-row:3"><div class="tag">Проверка · доступ</div>Сервер проверяет токен из заголовка <code>Authorization</code>.</div>
+<div class="bx gap" id="e1" style="grid-column:1;grid-row:4"><div class="tag">Отказ</div>Ответ <code>401</code>. Запись не читается.</div>
+<div class="bx step" id="s2" style="grid-column:2;grid-row:4"><div class="tag">Сервер · чтение</div>Запрашивает запись 42 в хранилище.</div>
+<div class="bx step" id="d1" style="grid-column:3;grid-row:4"><div class="tag">Хранилище · поиск</div>Находит запись и возвращает её серверу.</div>
+<div class="bx out" id="o1" style="grid-column:2 / 4;grid-row:5"><div class="tag">Итог</div>Клиент получает <code>200 OK</code> и запись в теле ответа.</div>
+<div class="diagram-sources" style="grid-row:6">Основание: <a href="https://www.rfc-editor.org/rfc/rfc9110#section-15.5.2">RFC 9110, 401 Unauthorized</a>. Запросы и ответы — поясняющие примеры.</div>
+</div>
+
+<h2>2. Что есть и что нужно сделать</h2>
+<div class="dg c12">
+  <div class="row-label">Работает сейчас</div>
+  <div class="bx chk" style="grid-column:span 6"><div class="tag">Проверка доступа</div>Токен проверяется до чтения.</div>
+  <div class="bx chk" style="grid-column:span 6"><div class="tag">Ответ при отказе</div>Код <code>401</code> без данных записи.</div>
+  <div class="row-label">Нужно сделать</div>
+  <div class="bx plan" style="grid-column:span 12"><div class="tag">Журнал отказов</div>Записывать отказы с адресом клиента.</div>
+</div>
+
+</div>
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var root = document.documentElement;
+
+  function setTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    var buttons = document.querySelectorAll('[data-set-theme]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].setAttribute('aria-pressed', String(buttons[i].getAttribute('data-set-theme') === theme));
+    }
+  }
+
+  function box(el, o) {
+    var r = el.getBoundingClientRect();
+    return {x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height};
+  }
+
+  function edges(dg) {
+    return (dg.getAttribute('data-edges') || '').split(';').filter(Boolean).map(function (s) {
+      var parts = s.split('|'), ids = parts[0].split('>');
+      return {from: ids[0].trim(), to: (ids[1] || '').trim(), label: parts[1] || ''};
+    });
+  }
+
+  // Overlapping rows give a horizontal line, overlapping columns a vertical one; otherwise an elbow from A's side to B's top or bottom.
+  function route(a, b, width) {
+    var ax2 = a.x + a.w, ay2 = a.y + a.h, bx2 = b.x + b.w, by2 = b.y + b.h;
+    var ovY = Math.min(ay2, by2) - Math.max(a.y, b.y);
+    var ovX = Math.min(ax2, bx2) - Math.max(a.x, b.x);
+    if (ovY > 8 && (b.x >= ax2 || bx2 <= a.x)) {
+      var y = Math.max(a.y, b.y) + ovY / 2, right = b.x >= ax2;
+      var x1 = right ? ax2 : a.x, x2 = right ? b.x - 1 : bx2 + 1;
+      return {pts: [[x1, y], [x2, y]], lx: (x1 + x2) / 2, ly: y - 6, anchor: 'middle'};
+    }
+    if (ovX > 8 && (b.y >= ay2 || by2 <= a.y)) {
+      var x = Math.max(a.x, b.x) + ovX / 2, down = b.y >= ay2, left = x > width * 0.6;
+      var y1 = down ? ay2 : a.y, y2 = down ? b.y - 1 : by2 + 1;
+      return {pts: [[x, y1], [x, y2]], lx: left ? x - 8 : x + 8, ly: (y1 + y2) / 2 + 4, anchor: left ? 'end' : 'start'};
+    }
+    var bcx = b.x + b.w / 2, sy = a.y + a.h / 2, sx = bcx > ax2 ? ax2 : a.x;
+    var ey = b.y >= sy ? b.y - 1 : by2 + 1;
+    return {pts: [[sx, sy], [bcx, sy], [bcx, ey]], lx: (sx + bcx) / 2, ly: sy - 6, anchor: 'middle'};
+  }
+
+  function draw() {
+    var list = document.querySelectorAll('.dg[data-edges]');
+    for (var i = 0; i < list.length; i++) {
+      var dg = list[i], svg = dg.querySelector(':scope > svg.wires');
+      if (!svg) {
+        svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'wires');
+        dg.appendChild(svg);
+      }
+      var o = dg.getBoundingClientRect();
+      svg.setAttribute('width', o.width);
+      svg.setAttribute('height', o.height);
+      svg.innerHTML = '<defs><marker id="ah' + i + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" class="ahd"/></marker></defs>';
+      var es = edges(dg);
+      for (var j = 0; j < es.length; j++) {
+        var e = es[j], A = document.getElementById(e.from), B = document.getElementById(e.to);
+        if (!A || !B) continue;
+        var r = route(box(A, o), box(B, o), o.width);
+        var p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', 'M' + r.pts.map(function (q) { return q[0] + ' ' + q[1]; }).join(' L'));
+        p.setAttribute('class', 'wire');
+        p.setAttribute('marker-end', 'url(#ah' + i + ')');
+        svg.appendChild(p);
+        if (e.label) {
+          var t = document.createElementNS(NS, 'text');
+          t.textContent = e.label;
+          t.setAttribute('x', r.lx);
+          t.setAttribute('y', r.ly);
+          t.setAttribute('text-anchor', r.anchor);
+          t.setAttribute('class', 'el');
+          svg.appendChild(t);
+        }
+      }
+    }
+  }
+
+  window.flowDiagram = {box: box, edges: edges, route: route, draw: draw, setTheme: setTheme};
+  setTheme(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-set-theme]');
+    if (b) setTheme(b.getAttribute('data-set-theme'));
+  });
+  draw();
+  window.addEventListener('resize', draw);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Как браузер выбирает цвет ссылки</title>
+<style>
+  html { --sans: system-ui, sans-serif; --mono: ui-monospace, Menlo, monospace; }
+  :root { --bg: #fafbfc; --fg: #1f2430; --muted: #6b7280; --code-bg: #eef1f5; --info: #3974a8; --ok: #16a34a; --warn: #d99a06; --bad: #dc2626; --wire: color-mix(in srgb, var(--fg) 70%, transparent); --sw-light: color-mix(in srgb, var(--fg) 12%, transparent); --sw-dark: transparent; }
+  :root[data-theme="dark"] { --bg: #15181d; --fg: #e4e7ec; --muted: #9ba3af; --code-bg: #252a33; --info: #79aee0; --ok: #3fb950; --warn: #e3b341; --bad: #f26d6d; --sw-light: transparent; --sw-dark: color-mix(in srgb, var(--fg) 18%, transparent); }
+
+  body { margin: 0; padding: clamp(24px, 4vw, 56px); font: 14px/1.55 var(--sans); color: var(--fg); background: var(--bg); }
+  .wrap { max-width: 1040px; margin-inline: auto; }
+  h2 { font-size: 20px; font-weight: 650; line-height: 1.35; margin: 56px 0 24px; padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, var(--fg) 12%, transparent); }
+  h2:first-of-type { margin-top: 32px; }
+  h3 { font-size: 17px; line-height: 1.4; margin: 32px 0 20px; }
+  code { font: 12px var(--mono); }
+
+  .theme-switch { display: inline-flex; margin-bottom: 16px; border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 8px; overflow: hidden; font-size: 12px; }
+  .theme-switch > * { padding: 5px 12px; border: 0; background: none; color: var(--fg); font: inherit; cursor: pointer; }
+  .theme-switch > :first-child { background: var(--sw-light); }
+  .theme-switch > :last-child { background: var(--sw-dark); }
+
+  .dg { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 46px; row-gap: 32px; }
+  .dg.c12 { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 12px; row-gap: 10px; }
+  .dg.center > .bx { align-self: center; }
+  svg.wires { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire); stroke-width: 1.5; }
+  .ahd { fill: var(--wire); }
+  .el { font: 11px var(--sans); fill: var(--muted); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+
+  .bx { border: 1px solid; border-radius: 10px; padding: 12px 14px; box-sizing: border-box; min-width: 0; overflow-wrap: anywhere; box-shadow: 0 2px 6px color-mix(in srgb, var(--fg) 4%, transparent); }
+  .bx p { margin: 8px 0 0; }
+  .bx pre { margin: 12px 0; padding: 12px; border-radius: 6px; background: var(--code-bg); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+  .bx pre:last-child { margin-bottom: 0; }
+  .bx a, .diagram-sources a { color: var(--info); text-underline-offset: 3px; }
+  .tag { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+  .step { border-color: color-mix(in srgb, var(--fg) 30%, transparent); background: color-mix(in srgb, var(--fg) 4%, transparent); }
+  .step .tag { color: var(--muted); }
+  .atk { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+  .atk .tag { color: var(--bad); }
+  .chk { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .chk .tag { color: var(--ok); }
+  .plan { border-color: var(--ok); border-style: dashed; }
+  .plan .tag { color: var(--ok); }
+  .gap { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+  .gap .tag { color: var(--warn); }
+  .out { border-color: color-mix(in srgb, var(--fg) 60%, transparent); font-weight: 600; }
+  .out .tag { color: var(--muted); }
+  .note { border-color: var(--info); background: color-mix(in srgb, var(--info) 5%, transparent); }
+  .note .tag { color: var(--info); }
+  .lane { text-align: center; font-weight: 700; font-size: 12px; padding: 6px 0; border-bottom: 1.5px solid color-mix(in srgb, var(--fg) 30%, transparent); }
+  .row-label { grid-column: 1 / -1; font-weight: 700; font-size: 12px; margin-top: 8px; }
+  .diagram-sources { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; }
+  .legend .bx { padding: 6px 11px; font-size: 12px; box-shadow: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="theme-switch" role="group" aria-label="Тема"><button type="button" data-set-theme="light">Светлая</button><button type="button" data-set-theme="dark">Тёмная</button></div>
+
+<div class="legend">
+  <div class="bx step">Шаг</div>
+  <div class="bx atk">Атака</div>
+  <div class="bx chk">Защита работает</div>
+  <div class="bx gap">Ограничение</div>
+  <div class="bx out">Итог</div>
+  <div class="bx note">Пояснение</div>
+</div>
+
+<h2>1. Как браузер выбирает цвет ссылки</h2>
+<div class="dg center" data-edges="el>collect;ua>collect;site>collect;collect>origin;origin>origin-list;origin>spec|остались a и .nav a;spec>order|равна;spec>result|разная">
+<div class="lane" style="grid-column:1;grid-row:1">Таблицы стилей</div>
+<div class="lane" style="grid-column:2;grid-row:1">Браузер · каскад</div>
+<div class="lane" style="grid-column:3;grid-row:1">Пояснения</div>
+<div class="bx step" id="el" style="grid-column:2;grid-row:2"><div class="tag">Начало</div>Браузер вычисляет <code>color</code> для ссылки:<pre><code>&lt;nav class=&quot;nav&quot;&gt;
+  &lt;a href=&quot;/docs&quot;&gt;Документация&lt;/a&gt;
+&lt;/nav&gt;</code></pre></div>
+<div class="bx step" id="ua" style="grid-column:1;grid-row:3"><div class="tag">Стили браузера</div>Стандарт HTML задаёт цвет ссылок по умолчанию:<pre><code>:link { color: #0000EE; }
+:visited { color: #551A8B; }</code></pre></div>
+<div class="bx step" id="site" style="grid-column:1;grid-row:4"><div class="tag">Стили сайта</div>Автор страницы задаёт свои правила:<pre><code>a { color: #333; }
+.nav a { color: teal; }</code></pre></div>
+<div class="bx step" id="collect" style="grid-column:2;grid-row:3 / span 2"><div class="tag">Сбор объявлений</div>Отбирает объявления <code>color</code>, селекторы которых подходят ссылке: <code>:link</code>, <code>a</code> и <code>.nav a</code>.<p><code>:visited</code> подходит только посещённой ссылке.</p></div>
+<div class="bx step" id="origin" style="grid-column:2;grid-row:5"><div class="tag">Шаг 1 · происхождение и важность</div>Обычные объявления сайта сильнее обычных объявлений браузера. <code>:link</code> выбывает.</div>
+<div class="bx note" id="origin-list" style="grid-column:3;grid-row:5"><div class="tag">Порядок происхождения · сверху сильнее</div><pre><code>!important браузера
+!important пользователя
+!important сайта
+обычные сайта
+обычные пользователя
+обычные браузера</code></pre><p>Анимации и переходы в списке опущены.</p></div>
+<div class="bx step" id="spec" style="grid-column:2;grid-row:6"><div class="tag">Шаг 2 · специфичность</div><code>.nav a</code> — (0,1,1), <code>a</code> — (0,0,1).<p>Контекст, атрибут <code>style</code> и слои <code>@layer</code> стоят между шагами 1 и 2. В примере они объявления не различают.</p></div>
+<div class="bx step" id="order" style="grid-column:1;grid-row:7"><div class="tag">Шаг 3 · порядок в коде</div>Побеждает объявление, которое стоит позже.</div>
+<div class="bx out" id="result" style="grid-column:2;grid-row:7"><div class="tag">Итог</div>Ссылка получает <code>color: teal</code> из <code>.nav a</code>.</div>
+<div class="diagram-sources" style="grid-row:8">Основание: <a href="https://html.spec.whatwg.org/multipage/rendering.html#phrasing-content-3">HTML Standard, 15.3.4</a>, <a href="https://www.w3.org/TR/css-cascade-5/#cascade-sort">CSS Cascade 5, порядок сортировки</a>, <a href="https://www.w3.org/TR/selectors-4/#specificity-rules">Selectors 4, специфичность</a>.</div>
+</div>
+
+<h2>2. Атака: чтение истории через <code>:visited</code></h2>
+<div class="dg center" data-edges="v1>v2;v2>v3;v2>v4|через размер;v4>v5;v4>v6|предел защиты">
+  <div class="bx atk" id="v1" style="grid-column:1;grid-row:1"><div class="tag">Атака</div>Скрипт задаёт посещённым ссылкам свой цвет и читает его, чтобы узнать, где был читатель:<pre><code>a:visited { color: red; }
+
+getComputedStyle(link).color</code></pre></div>
+  <div class="bx chk" id="v2" style="grid-column:2;grid-row:1"><div class="tag">Защита браузера</div><code>getComputedStyle</code> возвращает значение как для непосещённой ссылки.</div>
+  <div class="bx out" id="v3" style="grid-column:3;grid-row:1"><div class="tag">Итог</div>Скрипт не отличает посещённую ссылку от непосещённой.</div>
+  <div class="bx chk" id="v4" style="grid-column:2;grid-row:2"><div class="tag">Только цвета</div>Для <code>:visited</code> браузер применяет <code>color</code>, <code>background-color</code>, <code>border-color</code>, <code>outline-color</code> и другие цветовые свойства. Прозрачность не применяется.</div>
+  <div class="bx out" id="v5" style="grid-column:3;grid-row:2"><div class="tag">Итог</div>Размер и положение ссылки те же: по геометрии её не отличить.</div>
+  <div class="bx gap" id="v6" style="grid-column:2;grid-row:3"><div class="tag">Предел защиты</div>Цвет посещённой ссылки виден на экране. Ограничение скрывает его от скриптов, а не от читателя.</div>
+  <div class="diagram-sources" style="grid-row:4">Основание: <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Selectors/Privacy_and_:visited">MDN, Privacy and :visited</a>.</div>
+</div>
+
+</div>
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var root = document.documentElement;
+
+  function setTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    var buttons = document.querySelectorAll('[data-set-theme]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].setAttribute('aria-pressed', String(buttons[i].getAttribute('data-set-theme') === theme));
+    }
+  }
+
+  function box(el, o) {
+    var r = el.getBoundingClientRect();
+    return {x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height};
+  }
+
+  function edges(dg) {
+    return (dg.getAttribute('data-edges') || '').split(';').filter(Boolean).map(function (s) {
+      var parts = s.split('|'), ids = parts[0].split('>');
+      return {from: ids[0].trim(), to: (ids[1] || '').trim(), label: parts[1] || ''};
+    });
+  }
+
+  // Overlapping rows give a horizontal line, overlapping columns a vertical one; otherwise an elbow from A's side to B's top or bottom.
+  function route(a, b, width) {
+    var ax2 = a.x + a.w, ay2 = a.y + a.h, bx2 = b.x + b.w, by2 = b.y + b.h;
+    var ovY = Math.min(ay2, by2) - Math.max(a.y, b.y);
+    var ovX = Math.min(ax2, bx2) - Math.max(a.x, b.x);
+    if (ovY > 8 && (b.x >= ax2 || bx2 <= a.x)) {
+      var y = Math.max(a.y, b.y) + ovY / 2, right = b.x >= ax2;
+      var x1 = right ? ax2 : a.x, x2 = right ? b.x - 1 : bx2 + 1;
+      return {pts: [[x1, y], [x2, y]], lx: (x1 + x2) / 2, ly: y - 6, anchor: 'middle'};
+    }
+    if (ovX > 8 && (b.y >= ay2 || by2 <= a.y)) {
+      var x = Math.max(a.x, b.x) + ovX / 2, down = b.y >= ay2, left = x > width * 0.6;
+      var y1 = down ? ay2 : a.y, y2 = down ? b.y - 1 : by2 + 1;
+      return {pts: [[x, y1], [x, y2]], lx: left ? x - 8 : x + 8, ly: (y1 + y2) / 2 + 4, anchor: left ? 'end' : 'start'};
+    }
+    var bcx = b.x + b.w / 2, sy = a.y + a.h / 2, sx = bcx > ax2 ? ax2 : a.x;
+    var ey = b.y >= sy ? b.y - 1 : by2 + 1;
+    return {pts: [[sx, sy], [bcx, sy], [bcx, ey]], lx: (sx + bcx) / 2, ly: sy - 6, anchor: 'middle'};
+  }
+
+  function draw() {
+    var list = document.querySelectorAll('.dg[data-edges]');
+    for (var i = 0; i < list.length; i++) {
+      var dg = list[i], svg = dg.querySelector(':scope > svg.wires');
+      if (!svg) {
+        svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'wires');
+        dg.appendChild(svg);
+      }
+      var o = dg.getBoundingClientRect();
+      svg.setAttribute('width', o.width);
+      svg.setAttribute('height', o.height);
+      svg.innerHTML = '<defs><marker id="ah' + i + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" class="ahd"/></marker></defs>';
+      var es = edges(dg);
+      for (var j = 0; j < es.length; j++) {
+        var e = es[j], A = document.getElementById(e.from), B = document.getElementById(e.to);
+        if (!A || !B) continue;
+        var r = route(box(A, o), box(B, o), o.width);
+        var p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', 'M' + r.pts.map(function (q) { return q[0] + ' ' + q[1]; }).join(' L'));
+        p.setAttribute('class', 'wire');
+        p.setAttribute('marker-end', 'url(#ah' + i + ')');
+        svg.appendChild(p);
+        if (e.label) {
+          var t = document.createElementNS(NS, 'text');
+          t.textContent = e.label;
+          t.setAttribute('x', r.lx);
+          t.setAttribute('y', r.ly);
+          t.setAttribute('text-anchor', r.anchor);
+          t.setAttribute('class', 'el');
+          svg.appendChild(t);
+        }
+      }
+    }
+  }
+
+  window.flowDiagram = {box: box, edges: edges, route: route, draw: draw, setTheme: setTheme};
+  setTheme(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-set-theme]');
+    if (b) setTheme(b.getAttribute('data-set-theme'));
+  });
+  draw();
+  window.addEventListener('resize', draw);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+})();
+</script>
+</body>
+</html>

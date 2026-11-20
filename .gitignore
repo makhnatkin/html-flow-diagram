@@ -1,0 +1,5 @@
+.DS_Store
+# Outputs of flowdiag next to a diagram; docs/ keeps the README screenshots.
+*.nojs.html
+*.sanitized.html
+example/*.png
